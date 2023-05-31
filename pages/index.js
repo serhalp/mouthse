@@ -166,15 +166,17 @@ const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
 
 export default function Home() {
   const [isActive, setIsActive] = useState(false);
+  const [shouldDraw, setShouldDraw] = useState(false);
   const [volume, setVolume] = useState(null);
   const [pitch, setPitch] = useState(null);
 
   const canvasRef = useRef(null);
 
-  const draw = (canvas, volume, pitch) => {
+  const draw = (canvas) => {
     const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch);
     const ctx = canvas.getContext('2d')
-    ctx.reset();
+    if (!shouldDraw)
+      ctx.reset();
     // TODO making this 3x3 makes it slightly off...
     // ctx.fillRect(x, y, 3, 3);
     ctx.beginPath();
@@ -186,8 +188,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    draw(canvasRef.current, volume, pitch);
-  }, [draw])
+    draw(canvasRef.current);
+  }, [draw, volume, pitch, shouldDraw])
 
   const handleReadVolume = (newVolume) => {
     // Always keep most recent value, don't overwrite with null
@@ -209,6 +211,10 @@ export default function Home() {
   const handleClickStop = () => {
     setIsActive(false);
     // TODO something else probably, e.g. stop listening
+  };
+
+  const handleChangeDrawMode = (event) => {
+    setShouldDraw(event.target.checked);
   };
 
   const displayPitch = pitch ? pitch.toFixed(2) : '?';
@@ -238,6 +244,13 @@ export default function Home() {
           ? <button onClick={handleClickStop}>Stop</button>
           : <button onClick={handleClickStart}>Start</button>
         }
+
+        <section>
+          <label>
+            Draw mode ✏️
+            <input type="checkbox" checked={shouldDraw} onChange={handleChangeDrawMode} />
+          </label>
+        </section>
 
         <section>
           <p><code>Pitch: {displayPitch}</code></p>
