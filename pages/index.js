@@ -146,20 +146,21 @@ const connect = (audioContext, inputStream, onReadVolume, onReadPitch) => {
 }
 
 const MAX_VOLUME = 0.25;
-const MIN_PITCH = 80;
-const MAX_PITCH = 255;
-const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
+const DEFAULT_MIN_PITCH = 80;
+const DEFAULT_MAX_PITCH = 255;
+const getCoordsFromVolumeAndPitch = (canvas, volume, pitch, config) => {
   if (volume == null || pitch == null) return [0, 0];
 
   const { width, height } = canvas;
+  const { minPitch, maxPitch } = config;
   // `volume` is sort of scaled from 0.00-1.00, but in practice it seems very difficult to get
   // higher than ~0.4, so scale it
   const clampedVolume = Math.min(MAX_VOLUME, volume);
   const scaledVolume = clampedVolume / MAX_VOLUME;
   const x = scaledVolume * (width - 1);
   // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
-  const clampedPitch = Math.min(MAX_PITCH, Math.max(pitch, MIN_PITCH));
-  const scaledPitch = Math.max(0, clampedPitch - MIN_PITCH) / (MAX_PITCH - MIN_PITCH);
+  const clampedPitch = Math.min(maxPitch, Math.max(pitch, minPitch));
+  const scaledPitch = Math.max(0, clampedPitch - minPitch) / (maxPitch - minPitch);
   const y = scaledPitch * (height - 1);
   return [x, y];
 }
@@ -167,13 +168,18 @@ const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
 export default function Home() {
   const [isActive, setIsActive] = useState(false);
   const [shouldDraw, setShouldDraw] = useState(false);
+  const [minPitch, setMinPitch] = useState(DEFAULT_MIN_PITCH);
+  const [maxPitch, setMaxPitch] = useState(DEFAULT_MAX_PITCH);
   const [volume, setVolume] = useState(null);
   const [pitch, setPitch] = useState(null);
 
   const canvasRef = useRef(null);
 
   const draw = (canvas) => {
-    const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch);
+    const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch, {
+      minPitch,
+      maxPitch,
+    });
     const ctx = canvas.getContext('2d')
     if (!shouldDraw)
       ctx.reset();
@@ -189,7 +195,7 @@ export default function Home() {
 
   useEffect(() => {
     draw(canvasRef.current);
-  }, [draw, volume, pitch, shouldDraw])
+  }, [draw, volume, pitch, shouldDraw, minPitch, maxPitch])
 
   const handleReadVolume = (newVolume) => {
     // Always keep most recent value, don't overwrite with null
@@ -215,6 +221,14 @@ export default function Home() {
 
   const handleChangeDrawMode = (event) => {
     setShouldDraw(event.target.checked);
+  };
+
+  const handleChangeMinPitch = (event) => {
+    setMinPitch(event.target.value);
+  };
+
+  const handleChangeMaxPitch = (event) => {
+    setMaxPitch(event.target.value);
   };
 
   const displayPitch = pitch ? pitch.toFixed(2) : '?';
@@ -249,6 +263,18 @@ export default function Home() {
           <label>
             Draw mode ✏️
             <input type="checkbox" checked={shouldDraw} onChange={handleChangeDrawMode} />
+          </label>
+        </section>
+        <section>
+          <label>
+            Min. pitch
+            <input type="range" min="0" max="500" step="10" value={minPitch} onChange={handleChangeMinPitch} />
+          </label>
+        </section>
+        <section>
+          <label>
+            Max. pitch
+            <input type="range" min="0" max="500" step="10" value={maxPitch} onChange={handleChangeMaxPitch} />
           </label>
         </section>
 
