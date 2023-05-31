@@ -145,7 +145,7 @@ const connect = (audioContext, inputStream, onReadVolume, onReadPitch) => {
   analyseFrequency();
 }
 
-const MAX_VOLUME = 0.40;
+const MAX_VOLUME = 0.25;
 const MIN_PITCH = 80;
 const MAX_PITCH = 255;
 const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
