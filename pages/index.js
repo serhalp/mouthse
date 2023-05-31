@@ -129,7 +129,7 @@ const connect = (audioContext, inputStream, onReadVolume, onReadPitch) => {
   analyser.fftSize = 2048;
   analyser.minDecibels = -100;
   analyser.maxDecibels = -10;
-  analyser.smoothingTimeConstant = 0.85;
+  analyser.smoothingTimeConstant = 1.00;
   mediaStreamSource.connect(analyser);
   // Start with a bufferLength of the analyser's FFT size
   const bufferLength = analyser.fftSize;
