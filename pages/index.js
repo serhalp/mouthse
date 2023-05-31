@@ -145,16 +145,21 @@ const connect = (audioContext, inputStream, onReadVolume, onReadPitch) => {
   analyseFrequency();
 }
 
+const MAX_VOLUME = 0.40;
 const MIN_PITCH = 80;
 const MAX_PITCH = 255;
 const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
   if (volume == null || pitch == null) return [0, 0];
 
   const { width, height } = canvas;
-  // `volume` is already scaled from 0.00-1.00
-  const x = volume * (width - 1);
+  // `volume` is sort of scaled from 0.00-1.00, but in practice it seems very difficult to get
+  // higher than ~0.4, so scale it
+  const clampedVolume = Math.min(MAX_VOLUME, volume);
+  const scaledVolume = clampedVolume / MAX_VOLUME;
+  const x = scaledVolume * (width - 1);
   // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
-  const scaledPitch = Math.max(0, pitch - MIN_PITCH) / (MAX_PITCH - MIN_PITCH);
+  const clampedPitch = Math.min(MAX_PITCH, Math.max(pitch, MIN_PITCH));
+  const scaledPitch = Math.max(0, clampedPitch - MIN_PITCH) / (MAX_PITCH - MIN_PITCH);
   const y = scaledPitch * (height - 1);
   return [x, y];
 }
