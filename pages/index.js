@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import Head from 'next/head';
 
@@ -145,17 +145,53 @@ const connect = (audioContext, inputStream, onReadVolume, onReadPitch) => {
   analyseFrequency();
 }
 
+const MIN_PITCH = 80;
+const MAX_PITCH = 255;
+const getCoordsFromVolumeAndPitch = (canvas, volume, pitch) => {
+  if (volume == null || pitch == null) return [0, 0];
+
+  const { width, height } = canvas;
+  // `volume` is already scaled from 0.00-1.00
+  const x = volume * (width - 1);
+  // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
+  const scaledPitch = Math.max(0, pitch - MIN_PITCH) / (MAX_PITCH - MIN_PITCH);
+  const y = scaledPitch * (height - 1);
+  return [x, y];
+}
+
 export default function Home() {
   const [isActive, setIsActive] = useState(false);
   const [volume, setVolume] = useState(null);
   const [pitch, setPitch] = useState(null);
 
-  const handleReadVolume = (volume) => {
-    setVolume(volume);
+  const canvasRef = useRef(null);
+
+  const draw = (canvas, volume, pitch) => {
+    const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch);
+    const ctx = canvas.getContext('2d')
+    ctx.reset();
+    // TODO making this 3x3 makes it slightly off...
+    // ctx.fillRect(x, y, 3, 3);
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, 2 * Math.PI, true);
+    ctx.strokeStyle = 'blue';
+    ctx.stroke();
+    ctx.fillStyle = 'blue';
+    ctx.fill();
   }
 
-  const handleReadPitch = (pitch) => {
-    setPitch(pitch);
+  useEffect(() => {
+    draw(canvasRef.current, volume, pitch);
+  }, [draw])
+
+  const handleReadVolume = (newVolume) => {
+    // Always keep most recent value, don't overwrite with null
+    if (newVolume != null) setVolume(newVolume);
+  }
+
+  const handleReadPitch = (newPitch) => {
+    // Always keep most recent value, don't overwrite with null
+    if (newPitch != null) setPitch(newPitch);
   }
 
   const handleClickStart = async () => {
@@ -201,6 +237,8 @@ export default function Home() {
         <section>
           <p><code>Pitch: {displayPitch}</code></p>
           <p><code>Volume: {displayVolume}</code></p>
+
+          <canvas ref={canvasRef}></canvas>
         </section>
       </main>
 
@@ -231,6 +269,11 @@ export default function Home() {
         }
         main code {
           font-size: 5em;
+        }
+        main canvas {
+          width: 600px;
+          height: 400px;
+          border: 2px dashed black;
         }
         footer {
           width: 100%;
