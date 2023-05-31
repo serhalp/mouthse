@@ -267,13 +267,16 @@ export default function Home() {
           justify-content: center;
           align-items: center;
         }
+        main section {
+          padding-top: 1rem;
+        }
         main button {
           width: 10em;
           height: 2em;
           font-size: 2em;
         }
         main code {
-          font-size: 5em;
+          font-size: 4em;
         }
         main canvas {
           width: 600px;
