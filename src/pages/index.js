@@ -9,27 +9,40 @@ import { fromIntPercentage, toIntPercentage } from '../lib/percentage';
 const DEFAULT_MAX_VOLUME = 0.25;
 const DEFAULT_MIN_PITCH = 80;
 const DEFAULT_MAX_PITCH = 255;
+const TARGET_X_TOLERANCE_PX = 25;
+const TARGET_Y_TOLERANCE_PX = 25;
+const CANVAS_WIDTH_PX = 600;
+const CANVAS_HEIGHT_PX = 400;
 
-const getCoordsFromVolumeAndPitch = (canvas, volume, pitch, config) => {
-  if (volume == null || pitch == null) return [0, 0];
-
-  const { width, height } = canvas;
+const getCoordsFromVolumeAndPitch = (volume, pitch, config) => {
   const { minPitch, maxPitch, maxVolume } = config;
   // `volume` is sort of scaled from 0.00-1.00, but in practice it seems very difficult to get
   // higher than ~0.4, so scale it
   const clampedVolume = Math.min(maxVolume, volume);
   const scaledVolume = clampedVolume / maxVolume;
-  const x = scaledVolume * (width - 1);
+  const x = scaledVolume * (CANVAS_WIDTH_PX - 1);
+
   // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
   const clampedPitch = Math.min(maxPitch, Math.max(pitch, minPitch));
   const scaledPitch = Math.max(0, clampedPitch - minPitch) / (maxPitch - minPitch);
-  const y = scaledPitch * (height - 1);
+  const y = scaledPitch * (CANVAS_HEIGHT_PX - 1);
+
   return [x, y];
+}
+
+const getRandomTarget = (config) => {
+  const { minPitch, maxPitch, maxVolume } = config;
+  return {
+    pitch: minPitch + Math.random() * (maxPitch - minPitch),
+    volume: Math.random() * maxVolume,
+  };
 }
 
 export default function Home() {
   const [isActive, setIsActive] = useState(false);
-  const [shouldDraw, setShouldDraw] = useState(false);
+  const [drawModeEnabled, setDrawModeEnabled] = useState(false);
+  const [targetModeEnabled, setTargetModeEnabled] = useState(false);
+  const [target, setTarget] = useState(null);
   const [minPitch, setMinPitch] = useState(DEFAULT_MIN_PITCH);
   const [maxPitch, setMaxPitch] = useState(DEFAULT_MAX_PITCH);
   const [maxVolume, setMaxVolume] = useState(DEFAULT_MAX_VOLUME);
@@ -37,18 +50,33 @@ export default function Home() {
   const [pitch, setPitch] = useState(null);
 
   const canvasRef = useRef(null);
+  // TODO consider refactoring - seems a bit vague
+  const config = {
+    minPitch,
+    maxPitch,
+    maxVolume,
+  };
 
   const draw = (canvas) => {
-    const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch, {
-      minPitch,
-      maxPitch,
-      maxVolume,
-    });
     const ctx = canvas.getContext('2d')
-    if (!shouldDraw)
+
+    if (!drawModeEnabled)
       ctx.reset();
-    // TODO making this 3x3 makes it slightly off...
-    // ctx.fillRect(x, y, 3, 3);
+
+    if (volume != null && pitch != null) {
+      const [x, y] = getCoordsFromVolumeAndPitch(volume, pitch, config);
+      drawCursor(ctx, x, y);
+    }
+
+    if (targetModeEnabled) {
+      const [x, y] = getCoordsFromVolumeAndPitch(target.volume, target.pitch, config);
+      drawTarget(ctx, x, y);
+    }
+  }
+
+  const drawCursor = (ctx, x, y) => {
+    // TODO making this larger than 1px makes it slightly off, since we aren't calculating
+    // an offset, just starting at these coords. Offset it if we want to be really precise.
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, 2 * Math.PI, true);
     ctx.strokeStyle = 'blue';
@@ -57,18 +85,38 @@ export default function Home() {
     ctx.fill();
   }
 
+  const drawTarget = (ctx, x, y) => {
+    ctx.font = '48px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎯', x, y);
+  };
+
+  const verifyTargetCollision = (target, pitch, volume) => {
+    const [x, y] = getCoordsFromVolumeAndPitch(volume, pitch, config);
+    const [targetX, targetY] = getCoordsFromVolumeAndPitch(target.volume, target.pitch, config);
+    if (
+      Math.abs(targetX - x) < TARGET_X_TOLERANCE_PX
+      && Math.abs(targetY - y) < TARGET_Y_TOLERANCE_PX
+    ) {
+      window.alert('You win!');
+      setTargetModeEnabled(false);
+    }
+  }
+
   useEffect(() => {
     draw(canvasRef.current);
-  }, [draw, volume, pitch, shouldDraw, minPitch, maxPitch, maxVolume])
+  }, [draw, volume, pitch, drawModeEnabled, targetModeEnabled, minPitch, maxPitch, maxVolume])
 
   const handleReadVolume = (newVolume) => {
     // Always keep most recent value, don't overwrite with null
-    if (newVolume != null) setVolume(newVolume);
+    if (newVolume != null)
+      setVolume(newVolume);
   }
 
   const handleReadPitch = (newPitch) => {
     // Always keep most recent value, don't overwrite with null
-    if (newPitch != null) setPitch(newPitch);
+    if (newPitch != null)
+      setPitch(newPitch);
   }
 
   const handleClickStart = async () => {
@@ -84,7 +132,15 @@ export default function Home() {
   };
 
   const handleChangeDrawMode = (event) => {
-    setShouldDraw(event.target.checked);
+    setDrawModeEnabled(event.target.checked);
+  };
+
+  const handleChangeTargetMode = (event) => {
+    const enabled = event.target.checked;
+    if (enabled) {
+      setTarget(getRandomTarget(config));
+    }
+    setTargetModeEnabled(enabled);
   };
 
   const handleChangeMaxVolume = (event) => {
@@ -100,6 +156,9 @@ export default function Home() {
   const handleChangeMaxPitch = (event) => {
     setMaxPitch(event.target.value);
   };
+
+  if (targetModeEnabled && volume != null && pitch != null)
+    verifyTargetCollision(target, pitch, volume);
 
   const displayPitch = pitch ? `${pitch.toFixed(2)} Hz` : '?';
   const displayVolume = volume ? `${toIntPercentage(volume).toFixed(0)}%` : '?';
@@ -132,7 +191,11 @@ export default function Home() {
         <section>
           <label>
             Draw mode ✏️
-            <input type="checkbox" checked={shouldDraw} onChange={handleChangeDrawMode} />
+            <input type="checkbox" checked={drawModeEnabled} onChange={handleChangeDrawMode} />
+          </label>
+          <label>
+            Target mode 🎯
+            <input type="checkbox" checked={targetModeEnabled} onChange={handleChangeTargetMode} />
           </label>
         </section>
         <section>
@@ -159,7 +222,7 @@ export default function Home() {
           <p><code>Pitch: {displayPitch}</code></p>
           <p><code>Volume: {displayVolume}</code></p>
 
-          <canvas ref={canvasRef}></canvas>
+          <canvas ref={canvasRef} width={CANVAS_WIDTH_PX} height={CANVAS_HEIGHT_PX}></canvas>
         </section>
       </main>
 
@@ -195,8 +258,6 @@ export default function Home() {
           font-size: 4em;
         }
         main canvas {
-          width: 600px;
-          height: 400px;
           border: 2px dashed black;
         }
         footer {
