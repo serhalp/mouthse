@@ -25,7 +25,9 @@ const getCoordsFromVolumeAndPitch = (volume, pitch, config) => {
   // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
   const clampedPitch = Math.min(maxPitch, Math.max(pitch, minPitch));
   const scaledPitch = Math.max(0, clampedPitch - minPitch) / (maxPitch - minPitch);
-  const y = scaledPitch * (CANVAS_HEIGHT_PX - 1);
+  // y=0 is at the top of the canvas, so going 'up' in pitch would otherwise go 'down'
+  // on the page, which feels backwards to humans, so invert it
+  const y = CANVAS_HEIGHT_PX - scaledPitch * (CANVAS_HEIGHT_PX - 1);
 
   return [x, y];
 }
