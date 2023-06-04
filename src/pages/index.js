@@ -4,6 +4,7 @@ import Head from 'next/head';
 
 import styles from '../styles/Home.module.css';
 import { getInputStream, getAudioContext, connect } from '../lib/audio';
+import { fromIntPercentage, toIntPercentage } from '../lib/percentage';
 
 const DEFAULT_MAX_VOLUME = 0.25;
 const DEFAULT_MIN_PITCH = 80;
@@ -87,7 +88,9 @@ export default function Home() {
   };
 
   const handleChangeMaxVolume = (event) => {
-    setMaxVolume(event.target.value);
+    // UI uses percentage for user convenience, but we manipulate 0.00-1.00
+    const volume = fromIntPercentage(event.target.value);
+    setMaxVolume(volume.valueOf());
   };
 
   const handleChangeMinPitch = (event) => {
@@ -99,7 +102,7 @@ export default function Home() {
   };
 
   const displayPitch = pitch ? `${pitch.toFixed(2)} Hz` : '?';
-  const displayVolume = volume ? `${volume.toFixed(2)}%` : '?';
+  const displayVolume = volume ? `${toIntPercentage(volume).toFixed(0)}%` : '?';
 
   return (
     <div className={styles.container}>
@@ -135,7 +138,8 @@ export default function Home() {
         <section>
           <label>
             Max. volume
-            <input type="range" min="0.01" max="1" step="0.01" value={maxVolume} onChange={handleChangeMaxVolume} />
+            {/* Render as percentage, manipulate as 0.00-1.00 */}
+            <input type="range" min="1" max="100" step="1" value={toIntPercentage(maxVolume)} onChange={handleChangeMaxVolume} />
           </label>
         </section>
         <section>
