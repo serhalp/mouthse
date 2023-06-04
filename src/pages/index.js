@@ -98,8 +98,8 @@ export default function Home() {
     setMaxPitch(event.target.value);
   };
 
-  const displayPitch = pitch ? pitch.toFixed(2) : '?';
-  const displayVolume = volume ? volume.toFixed(2) : '?';
+  const displayPitch = pitch ? `${pitch.toFixed(2)} Hz` : '?';
+  const displayVolume = volume ? `${volume.toFixed(2)}%` : '?';
 
   return (
     <div className={styles.container}>
