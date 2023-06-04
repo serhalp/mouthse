@@ -5,7 +5,7 @@ import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import { getInputStream, getAudioContext, connect } from '../lib/audio';
 
-const MAX_VOLUME = 0.25;
+const DEFAULT_MAX_VOLUME = 0.25;
 const DEFAULT_MIN_PITCH = 80;
 const DEFAULT_MAX_PITCH = 255;
 
@@ -13,11 +13,11 @@ const getCoordsFromVolumeAndPitch = (canvas, volume, pitch, config) => {
   if (volume == null || pitch == null) return [0, 0];
 
   const { width, height } = canvas;
-  const { minPitch, maxPitch } = config;
+  const { minPitch, maxPitch, maxVolume } = config;
   // `volume` is sort of scaled from 0.00-1.00, but in practice it seems very difficult to get
   // higher than ~0.4, so scale it
-  const clampedVolume = Math.min(MAX_VOLUME, volume);
-  const scaledVolume = clampedVolume / MAX_VOLUME;
+  const clampedVolume = Math.min(maxVolume, volume);
+  const scaledVolume = clampedVolume / maxVolume;
   const x = scaledVolume * (width - 1);
   // `pitch` is a frequency in hertz, so scale it to a typical human vocal range
   const clampedPitch = Math.min(maxPitch, Math.max(pitch, minPitch));
@@ -31,6 +31,7 @@ export default function Home() {
   const [shouldDraw, setShouldDraw] = useState(false);
   const [minPitch, setMinPitch] = useState(DEFAULT_MIN_PITCH);
   const [maxPitch, setMaxPitch] = useState(DEFAULT_MAX_PITCH);
+  const [maxVolume, setMaxVolume] = useState(DEFAULT_MAX_VOLUME);
   const [volume, setVolume] = useState(null);
   const [pitch, setPitch] = useState(null);
 
@@ -40,6 +41,7 @@ export default function Home() {
     const [x, y] = getCoordsFromVolumeAndPitch(canvas, volume, pitch, {
       minPitch,
       maxPitch,
+      maxVolume,
     });
     const ctx = canvas.getContext('2d')
     if (!shouldDraw)
@@ -56,7 +58,7 @@ export default function Home() {
 
   useEffect(() => {
     draw(canvasRef.current);
-  }, [draw, volume, pitch, shouldDraw, minPitch, maxPitch])
+  }, [draw, volume, pitch, shouldDraw, minPitch, maxPitch, maxVolume])
 
   const handleReadVolume = (newVolume) => {
     // Always keep most recent value, don't overwrite with null
@@ -82,6 +84,10 @@ export default function Home() {
 
   const handleChangeDrawMode = (event) => {
     setShouldDraw(event.target.checked);
+  };
+
+  const handleChangeMaxVolume = (event) => {
+    setMaxVolume(event.target.value);
   };
 
   const handleChangeMinPitch = (event) => {
@@ -124,6 +130,12 @@ export default function Home() {
           <label>
             Draw mode ✏️
             <input type="checkbox" checked={shouldDraw} onChange={handleChangeDrawMode} />
+          </label>
+        </section>
+        <section>
+          <label>
+            Max. volume
+            <input type="range" min="0.01" max="1" step="0.01" value={maxVolume} onChange={handleChangeMaxVolume} />
           </label>
         </section>
         <section>
